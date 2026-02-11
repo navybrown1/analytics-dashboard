@@ -295,6 +295,10 @@ with st.sidebar:
 if not processor:
     st.stop()
 
+if not processor.sections:
+    st.warning("The document could not be parsed into sections. Please upload a different DOCX file.")
+    st.stop()
+
 # Tabs
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
     [
@@ -407,7 +411,10 @@ with tab4:
             with st.expander(f"{row['type']}: ...{row['text'][:50]}..."):
                 st.write(f"**Full Text:** {row['text']}")
                 st.write(f"**Source:** {row['section']}")
-                st.checkbox("Mark verified", key=f"req_{idx}")
+                st.checkbox(
+                    "Mark verified",
+                    key=f"req_{idx}_{row['section'][:20]}_{hash(str(row['text'][:30]))}",
+                )
 
         st.download_button("Export Checklist", filtered_req.to_csv(index=False), "requirements.csv")
     else:
@@ -427,12 +434,15 @@ with tab5:
         st.subheader("Topic Distribution")
         # Pie chart of top 5 entities
         top_5 = dict(processor.entity_counts.most_common(5))
-        fig_pie = px.pie(
-            names=list(top_5.keys()),
-            values=list(top_5.values()),
-            title="Most Frequent Concepts",
-        )
-        st.plotly_chart(fig_pie, use_container_width=True)
+        if top_5:
+            fig_pie = px.pie(
+                names=list(top_5.keys()),
+                values=list(top_5.values()),
+                title="Most Frequent Concepts",
+            )
+            st.plotly_chart(fig_pie, use_container_width=True)
+        else:
+            st.info("No entities detected for topic distribution.")
 
     st.subheader("Risk / Negative Wording by Section")
     df_sec = pd.DataFrame(processor.sections)
