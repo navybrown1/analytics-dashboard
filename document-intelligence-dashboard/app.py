@@ -326,6 +326,8 @@ with tab1:
         st.write(f"**Date:** {processor.metadata.get('date', 'Unknown')}")
         st.write(f"**Total Sections:** {len(processor.sections)}")
         st.write(f"**Total Entities:** {len(processor.entity_counts)}")
+        risk_sections = sum(1 for s in processor.sections if s.get("risk_score", 0) > 0)
+        st.write(f"**Sections with risk/negative wording:** {risk_sections}")
 
     st.subheader("Key Takeaways (Extracted)")
     # Take first sentence of each major section
@@ -353,12 +355,19 @@ with tab2:
 
         text_display = sel_section["text"]
         if search_term:
-            text_display = text_display.replace(search_term, f"**_{search_term.upper()}_**")
+            text_display = re.sub(
+                re.escape(search_term),
+                lambda m: f"**_{m.group(0).upper()}_**",
+                text_display,
+                flags=re.IGNORECASE,
+            )
 
         st.markdown(text_display)
 
         st.divider()
-        st.caption(f"Word Count: {sel_section.get('word_count', 0)}")
+        st.caption(
+            f"Word Count: {sel_section.get('word_count', 0)} | Risk score: {sel_section.get('risk_score', 0)}"
+        )
 
 # --- Tab 3: Entities ---
 with tab3:
@@ -424,6 +433,20 @@ with tab5:
             title="Most Frequent Concepts",
         )
         st.plotly_chart(fig_pie, use_container_width=True)
+
+    st.subheader("Risk / Negative Wording by Section")
+    df_sec = pd.DataFrame(processor.sections)
+    sections_with_risk = df_sec[df_sec["risk_score"] > 0][["title", "risk_score"]]
+    if not sections_with_risk.empty:
+        fig_risk = px.bar(
+            sections_with_risk,
+            x="title",
+            y="risk_score",
+            title="Sections with negative/uncertainty words (not, unlikely, error, fail)",
+        )
+        st.plotly_chart(fig_risk, use_container_width=True)
+    else:
+        st.info("No sections with risk/negative wording detected.")
 
 # --- Tab 6: Q&A ---
 with tab6:
