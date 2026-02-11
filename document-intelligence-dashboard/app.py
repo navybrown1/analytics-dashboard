@@ -1,6 +1,8 @@
 import collections
+import hashlib
 import os
 import re
+import traceback
 
 import networkx as nx
 import numpy as np
@@ -53,8 +55,9 @@ class DocumentProcessor:
             if not text:
                 continue
             is_header = False
+            style_name = getattr(getattr(para, "style", None), "name", "") or ""
             if len(text) < 60 and (
-                para.style.name.startswith("Heading")
+                style_name.startswith("Heading")
                 or re.match(r"^\d+\.\s", text)
                 or text.isupper()
                 or (len(text.split()) < 6 and text[0].isupper())
@@ -283,6 +286,8 @@ with st.sidebar:
             st.success("File processed successfully!")
         except Exception as exc:
             st.error(f"Error processing file: {exc}")
+            with st.expander("Technical details"):
+                st.code(traceback.format_exc())
     elif os.path.exists(default_file):
         try:
             processor = load_local_document(default_file)
@@ -411,10 +416,8 @@ with tab4:
             with st.expander(f"{row['type']}: ...{row['text'][:50]}..."):
                 st.write(f"**Full Text:** {row['text']}")
                 st.write(f"**Source:** {row['section']}")
-                st.checkbox(
-                    "Mark verified",
-                    key=f"req_{idx}_{row['section'][:20]}_{hash(str(row['text'][:30]))}",
-                )
+                key_slug = hashlib.md5(f"{row['section']}{row['text'][:50]}".encode()).hexdigest()[:12]
+                st.checkbox("Mark verified", key=f"req_{key_slug}_{idx}")
 
         st.download_button("Export Checklist", filtered_req.to_csv(index=False), "requirements.csv")
     else:
