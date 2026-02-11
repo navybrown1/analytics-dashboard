@@ -1,4 +1,8 @@
 import os
+import sys
+
+# Ensure app directory is on path when run from subfolder (e.g. Streamlit Cloud)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import networkx as nx
 import pandas as pd
